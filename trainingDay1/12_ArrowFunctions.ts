@@ -4,364 +4,225 @@ function section(title: string): void {
   console.log(`\n--- ${title} ---`);
 }
 
-// ---- Small helpers used by the scenarios below ---------------------------
-
-// A function that waits (used to imitate slow browser actions).
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
-// A pretend Playwright "page" so we can run test-style code without a browser.
-class FakePage {
-  constructor(public url: string = "about:blank") {}
-
-  async goto(url: string): Promise<void> {
-    await sleep(1);
-    this.url = url;
-  }
-
-  title(): string {
-    return `Title of ${this.url}`;
-  }
-}
-
-// What Playwright hands to every test: an object of "fixtures".
-type Fixtures = { page: FakePage; browserName: string };
-type TestBody = (fixtures: Fixtures) => void | Promise<void>;
-
-// A tiny imitation of  test(...)  and  test.beforeEach(...)  so you can SEE how the arrow functions are used.
-class MiniRunner {
-  private hooks: TestBody[] = [];
-  private tests: Array<[string, TestBody]> = [];
-
-  beforeEach(hook: TestBody): void {
-    this.hooks.push(hook); // just remember it, call it later
-  }
-
-  test(name: string, body: TestBody): void {
-    this.tests.push([name, body]); // just remember it, call it later
-  }
-
-  async runAll(): Promise<void> {
-    for (const [name, body] of this.tests) {
-      const fixtures: Fixtures = { page: new FakePage(), browserName: "chromium" };
-      for (const hook of this.hooks) {
-        await hook(fixtures); // call YOUR arrow function and hand it the fixtures
-      }
-      await body(fixtures);
-      console.log(`PASSED: ${name}`);
-    }
-  }
-}
-
-class Report {
-  title: string = "Smoke";
-
-  // Arrow function: "this" is simply the Report object around it.
-  withArrow(items: string[]): string[] {
-    return items.map((item) => `${this.title}:${item}`);
-  }
-
-  // Normal function: gets its OWN "this", so we must pass the object in by hand (2nd argument of map).
-  withFunction(items: string[]): string[] {
-    return items.map(function (this: Report, item: string) {
-      return `${this.title}:${item}`;
-    }, this);
-  }
-}
-
-class ClickCounter {
-  count: number = 0;
-
-  incrementArrow = (): void => {
-    this.count++; // arrow property: "this" is locked to this object for good
-  };
-
-  incrementMethod(): void {
-    this.count++; // normal method: "this" depends on HOW it is called
-  }
-}
-
 /**
- * DAY 4 - CLASS 1: ARROW FUNCTIONS (and where Playwright uses them)
+ * DAY 4 - CLASS 1: ARROW FUNCTIONS
  *
- * An arrow function is a shorter way to write a function. You see it in almost every Playwright line:
- *
- *   test("has title", async ({ page }) => { ... });
- *                      \________________________/
- *                       an arrow function: a recipe you HAND to Playwright.
- *                       Playwright keeps it and calls it LATER, passing in { page }.
+ * An arrow function is a SHORTER way to write a function.
  *
  *   normal :  function add(a: number, b: number): number { return a + b; }
  *   arrow  :  const add = (a: number, b: number): number => a + b;
- *                         \_____ inputs _____/  \_ output _/    \_ body, returned automatically
+ *                         \_______ inputs _______/  \_ output _/    \_ what it gives back
  *
- * Where you will meet arrow functions in Playwright:
- *   1. the test body                       test("...", async ({ page }) => { ... })
- *   2. hooks and groups                    test.beforeEach(async ({ page }) => { ... })
- *   3. array methods on results            texts.map((t) => t.trim())
- *   4. conditions on events                page.waitForResponse((res) => res.status() === 200)
- *   5. code that runs INSIDE the browser   page.evaluate(() => document.title)
- *   6. polling checks                      expect.poll(() => someValue)
+ * Read  =>  as "gives back".   (a, b) => a + b     means   "a and b give back a + b"
  *
- * Run this file:  npx tsx trainingDay4/01_ArrowFunctions.ts
- * (Real Playwright version of the same ideas: tests/arrow-functions.spec.ts)
+ * Run this file: npx tsx trainingDay1/12_ArrowFunctions.ts
  */
 class ArrowFunctions {
-  /** The same function written both ways. */
+  /**
+   * SCENARIO 1: the same function, written two ways.
+   */
   normalVsArrow(): void {
     section("normalVsArrow");
     function addNormal(a: number, b: number): number {
       return a + b;
     }
     const addArrow = (a: number, b: number): number => a + b;
+
     console.log(addNormal(2, 3)); // => 5
     console.log(addArrow(2, 3)); // => 5
   }
 
   /**
-   * Syntax variations.
+   * SCENARIO 2: how many inputs?
    *
-   *   () => value                  no inputs
-   *   (n) => n * 2                 expression body: the value is returned automatically
-   *   (n) => { ...; return x; }    block body: you MUST write return yourself
+   *   no input      ()          =>  ...
+   *   one input     (n)         =>  ...
+   *   two inputs    (a, b)      =>  ...
    */
-  syntaxVariations(): void {
-    section("syntaxVariations");
-    const sayHi = (): string => "Hi";
+  numberOfInputs(): void {
+    section("numberOfInputs");
+    const sayHello = (): string => "Hello";
     const double = (n: number): number => n * 2;
-    const addThree = (a: number, b: number, c: number): number => a + b + c;
-    const describe = (n: number): string => {
-      const label = n % 2 === 0 ? "even" : "odd";
-      return `${n} is ${label}`; // block body: explicit return
-    };
-    console.log(sayHi()); // => Hi
+    const add = (a: number, b: number): number => a + b;
+    const add3 = (a: number, b: number, c: number): number => a + b + c;
+
+    console.log(sayHello()); // => Hello
     console.log(double(4)); // => 8
-    console.log(addThree(1, 2, 3)); // => 6
-    console.log(describe(7)); // => 7 is odd
-    // ERROR-DEMO: console.log(double("4")); // @ERR  the input must be a number, not text
+    console.log(add(2, 3)); // => 5
+    console.log(add3(1, 2, 3)); // => 6
+    // ERROR-DEMO: double("4"); // @ERR  the input must be a number, not text
   }
 
-  /** Common bug: braces without return give back undefined. */
+  /**
+   * SCENARIO 3: short body vs long body.
+   *
+   *   No { }  ->  the answer is returned for you         (n) => n * 2
+   *   With { } ->  you MUST write  return  yourself       (n) => { return n * 2; }
+   */
+  shortBodyVsLongBody(): void {
+    section("shortBodyVsLongBody");
+    const shortWay = (n: number): number => n * 2;
+    const longWay = (n: number): number => {
+      return n * 2;
+    };
+    const evenOrOdd = (n: number): string => {
+      if (n % 2 === 0) {
+        return `${n} is even`;
+      }
+      return `${n} is odd`;
+    };
+
+    console.log(shortWay(5)); // => 10
+    console.log(longWay(5)); // => 10
+    console.log(evenOrOdd(7)); // => 7 is odd
+    console.log(evenOrOdd(8)); // => 8 is even
+  }
+
+  /**
+   * SCENARIO 4: the most common beginner mistake.
+   * Used { } but forgot  return  -> the function gives back nothing (undefined).
+   */
   forgottenReturn(): void {
     section("forgottenReturn");
-    const goodExpression = (n: number): number => n * 2; // no braces: returned for you
-    const goodBlock = (n: number): number => {
-      return n * 2; // braces: you must write return
+    const good = (n: number): number => {
+      return n * 2;
     };
-    const forgot = (n: number): void => {
-      n * 2; // calculated and thrown away
+    const forgot = (n: number) => {
+      n * 2; // calculated, then thrown away
     };
-    console.log(goodExpression(4), goodBlock(4)); // => 8 8
+
+    console.log(good(4)); // => 8
     console.log(forgot(4)); // => undefined
+    // ERROR-DEMO: const broken = (n: number): number => { n * 2; }; // @ERR  says it returns a number but there is no return
   }
 
   /**
-   * Returning an object: wrap it in ( ).
-   * Without the brackets, { } is read as the function BODY, not as an object.
-   * (VS Code may show a faint "unused label" hint on the wrong line - that is the clue.)
+   * SCENARIO 5: a default value for an input, used when the caller passes nothing.
    */
-  returnsObjectLiteral(): void {
-    section("returnsObjectLiteral");
-    const wrong = (name: string) => {
-      name: name;
+  defaultValue(): void {
+    section("defaultValue");
+    const greet = (name: string = "friend"): string => `Hi ${name}`;
+
+    console.log(greet("Maya")); // => Hi Maya
+    console.log(greet()); // => Hi friend
+  }
+
+  /**
+   * SCENARIO 6: store an arrow function in a variable and use it many times.
+   */
+  useManyTimes(): void {
+    section("useManyTimes");
+    const withTax = (price: number): number => Math.round(price * 1.1);
+
+    console.log(withTax(100)); // => 110
+    console.log(withTax(200)); // => 220
+    console.log(withTax(50)); // => 55
+  }
+
+  /**
+   * SCENARIO 7: arrow functions inside array methods. You will use this a lot.
+   *
+   *   map     -> change EVERY item
+   *   filter  -> keep only items that pass a test
+   *   find    -> get the FIRST item that passes a test
+   */
+  arrowInArrays(): void {
+    section("arrowInArrays");
+    const numbers: number[] = [1, 2, 3, 4, 5, 6];
+
+    console.log(numbers.map((n) => n * 10)); // => [ 10, 20, 30, 40, 50, 60 ]
+    console.log(numbers.filter((n) => n % 2 === 0)); // => [ 2, 4, 6 ]
+    console.log(numbers.find((n) => n > 3)); // => 4
+
+    const names: string[] = ["  maya ", "  ravi", "anu  "];
+    console.log(names.map((name) => name.trim())); // => [ 'maya', 'ravi', 'anu' ]
+  }
+
+  /**
+   * SCENARIO 8: pass an arrow function INTO another function (a callback).
+   * doTwice does not know WHAT to do. The caller tells it by passing an arrow function.
+   */
+  arrowAsCallback(): void {
+    section("arrowAsCallback");
+    const doTwice = (action: () => void): void => {
+      action();
+      action();
     };
-    const right = (name: string) => ({ name: name });
-    console.log(wrong("Paari")); // => undefined
-    console.log(right("Paari")); // => { name: 'Paari' }
-  }
 
-  /**
-   * Arrow functions inside array methods. Playwright gives you arrays all the time:
-   *
-   *   const texts = await page.locator(".todo-list li").allTextContents();
-   *   const clean = texts.map((t) => t.trim());
-   *
-   * Here the "texts" array is typed in by hand so it runs without a browser.
-   */
-  callbacksInArrayMethods(): void {
-    section("callbacksInArrayMethods");
-    const rawTexts: string[] = ["  Buy milk ", "Walk dog", "  ", "Read book"];
-    const texts = rawTexts.map((t) => t.trim()); // transform every item
-    console.log(texts); // => [ 'Buy milk', 'Walk dog', '', 'Read book' ]
-    console.log(texts.filter((t) => t !== "")); // => [ 'Buy milk', 'Walk dog', 'Read book' ]
-    console.log(texts.find((t) => t.startsWith("W"))); // => Walk dog
-    console.log(texts.some((t) => t.includes("dog"))); // => true
-    console.log(texts.every((t) => t.length > 0)); // => false
-    console.log(["b", "c", "a"].sort((x, y) => x.localeCompare(y))); // => [ 'a', 'b', 'c' ]
-    const chained = rawTexts
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0)
-      .map((t) => t.toUpperCase());
-    console.log(chained); // => [ 'BUY MILK', 'WALK DOG', 'READ BOOK' ]
-  }
-
-  /**
-   * The  ({ page }) =>  part.  Playwright builds ONE object of fixtures and passes it in.
-   * Curly brackets in the parameter pick out only the parts you need (destructuring).
-   *
-   *   fixtures = { page, browserName, context, request, ... }
-   *
-   *   async ({ page }) => ...                 take ONLY page
-   *   async ({ page, browserName }) => ...    take two
-   *   async () => ...                         take nothing
-   */
-  destructuredParameter(): void {
-    section("destructuredParameter");
-    const fixtures = { page: "PAGE-OBJECT", browserName: "chromium", viewport: "1280x720" };
-    const onlyPage = ({ page }: { page: string }): string => `got ${page}`;
-    const two = ({ page, browserName }: { page: string; browserName: string }): string => `${browserName} + ${page}`;
-    const renamed = ({ page: p }: { page: string }): string => `short name p = ${p}`;
-    const withDefault = ({ retries = 2 }: { retries?: number }): number => retries;
-    console.log(onlyPage(fixtures)); // => got PAGE-OBJECT
-    console.log(two(fixtures)); // => chromium + PAGE-OBJECT
-    console.log(renamed(fixtures)); // => short name p = PAGE-OBJECT
-    console.log(withDefault({})); // => 2
-    console.log(withDefault({ retries: 5 })); // => 5
-  }
-
-  /**
-   * How  test("name", async ({ page }) => { ... })  really works.
-   *
-   *   1. You call test(name, yourArrow).         test only STORES yourArrow.
-   *   2. Later the runner builds { page, ... }.
-   *   3. The runner CALLS yourArrow({ page, ... }) and waits for it to finish.
-   *
-   * An arrow function you pass to another function is called a CALLBACK.
-   */
-  async miniTestRunner(): Promise<void> {
-    section("miniTestRunner");
-    const runner = new MiniRunner();
-
-    runner.beforeEach(async ({ page }) => {
-      await page.goto("https://demo.playwright.dev/todomvc");
+    doTwice(() => {
+      console.log("Hello"); // => Hello
     });
-
-    runner.test("has title", async ({ page }) => {
-      console.log(page.title()); // => Title of https://demo.playwright.dev/todomvc
-    });
-
-    runner.test("knows the browser", async ({ page, browserName }) => {
-      console.log(browserName, page.url); // => chromium https://demo.playwright.dev/todomvc
-    });
-
-    await runner.runAll(); // the runner now calls each arrow function you stored
-    // => PASSED: has title ~~ PASSED: knows the browser
+    doTwice(() => console.log("Bye")); // => Bye
   }
 
   /**
-   * async arrow: an arrow function that can use await. It always returns a Promise.
-   * Every Playwright test body is an async arrow, because browser actions take time.
-   *
-   *   const pending = slowDouble(4);    pending is a Promise: "a result that is not ready yet"
-   *   await pending                     wait here until it is ready -> 8
+   * SCENARIO 9: same function, different arrow function passed in = different result.
    */
-  async asyncArrow(): Promise<void> {
-    section("asyncArrow");
-    const slowDouble = async (n: number): Promise<number> => {
-      await sleep(10);
-      return n * 2;
+  swapTheBehaviour(): void {
+    section("swapTheBehaviour");
+    const calculate = (a: number, b: number, operation: (x: number, y: number) => number): number => {
+      return operation(a, b);
     };
-    const pending = slowDouble(4);
-    console.log(pending); // => Promise { <pending> }
-    console.log(await pending); // => 8
+
+    console.log(calculate(10, 5, (x, y) => x + y)); // => 15
+    console.log(calculate(10, 5, (x, y) => x - y)); // => 5
+    console.log(calculate(10, 5, (x, y) => x * y)); // => 50
   }
 
   /**
-   * The BIG difference: "this".
-   *   arrow function   uses the "this" of the code AROUND it (lexical this)
-   *   normal function  gets its own "this", decided by how it is called
-   *
-   * Inside a class (like a Page Object) this is why arrow callbacks "just work".
+   * SCENARIO 10: arrow function that returns an object. Wrap the object in ( ).
+   * Without ( ), the { } is read as the function body, not as an object.
    */
-  lexicalThis(): void {
-    section("lexicalThis");
-    const report = new Report();
-    console.log(report.withArrow(["a", "b"])); // => [ 'Smoke:a', 'Smoke:b' ]
-    console.log(report.withFunction(["a", "b"])); // => [ 'Smoke:a', 'Smoke:b' ]  (needed the extra "this" argument)
-    // ERROR-DEMO: ["a"].map(function (item) { return this.title + item; }); // @ERR  a normal function has no "this" to use here
+  returnObject(): void {
+    section("returnObject");
+    const makeUser = (name: string, age: number) => ({ name: name, age: age });
+
+    console.log(makeUser("Maya", 25)); // => { name: 'Maya', age: 25 }
   }
 
   /**
-   * Arrow function as a class property keeps "this" even when you pass it around.
-   * A normal method loses "this" when you copy it into a variable or hand it over as a callback.
-   *
-   *   Real example:  page.on("response", this.handleResponse)
-   *   If handleResponse is a normal method, "this" is gone when Playwright calls it.
+   * SCENARIO 11: one rule - a const arrow function only exists AFTER its own line.
+   * A normal function can be called before the line where it is written.
    */
-  arrowAsClassProperty(): void {
-    section("arrowAsClassProperty");
-    const counter = new ClickCounter();
-
-    const arrowCopy = counter.incrementArrow;
-    arrowCopy();
-    console.log(counter.count); // => 1
-
-    const methodCopy = counter.incrementMethod;
-    try {
-      methodCopy();
-    } catch (error) {
-      console.log("method lost its this:", error instanceof TypeError); // => method lost its this: true
-    }
-    console.log(counter.count); // => 1   (the broken copy changed nothing)
-  }
-
-  /** Things an arrow function cannot do. */
-  arrowLimits(): void {
-    section("arrowLimits");
-    const makeUser = (name: string) => ({ name });
-    console.log(makeUser("Paari")); // => { name: 'Paari' }
-    // ERROR-DEMO: const u = new makeUser("x"); // @ERR  arrow functions cannot be used with "new"
-
-    console.log(hoisted(3)); // => 6   (a normal function declaration is available above its own line)
-    function hoisted(n: number): number {
+  orderMatters(): void {
+    section("orderMatters");
+    console.log(normalOne(3)); // => 6
+    function normalOne(n: number): number {
       return n * 2;
     }
-    // ERROR-DEMO: const result = notYet(2); const notYet = (n: number): number => n; // @ERR  a const arrow only exists AFTER its line
+    // ERROR-DEMO: console.log(arrowOne(3)); const arrowOne = (n: number): number => n * 2; // @ERR  arrowOne is used before it is created
   }
 
   /**
-   * Cheat sheet: the real Playwright shapes (not run here - run them in tests/arrow-functions.spec.ts).
+   * SCENARIO 12: where you will SEE arrow functions in Playwright (just text here, nothing runs).
    */
-  playwrightCheatSheet(): void {
-    section("playwrightCheatSheet");
-    console.log("test body     : test('title', async ({ page }) => { await page.goto(url); });");
-    console.log("hook          : test.beforeEach(async ({ page }) => { await page.goto(url); });");
-    console.log("group         : test.describe('login', () => { test('a', async ({ page }) => {}); });");
-    console.log("clean texts   : (await page.locator('li').allTextContents()).map((t) => t.trim())");
-    console.log("wait for API  : page.waitForResponse((res) => res.url().includes('/api') && res.status() === 200)");
-    console.log("in browser    : await page.evaluate(() => document.title)");
-    console.log("polling       : await expect.poll(() => getCount()).toBe(3)");
-    // => polling       : await expect.poll(() => getCount()).toBe(3)
+  inPlaywright(): void {
+    section("inPlaywright");
+    console.log("test body : test('has title', async ({ page }) => { ... });");
+    console.log("clean text: texts.map((t) => t.trim())");
+    console.log("keep some : texts.filter((t) => t !== '')");
+    // => clean text: texts.map((t) => t.trim())
   }
 
-  /** Quick rules. */
-  whenToUse(): void {
-    section("whenToUse");
-    console.log("Arrow  : short callbacks, test bodies, array methods, code that must keep 'this'");
-    console.log("Normal : when you need hoisting, 'new', or your own 'this' (rare in test code)");
-    // => Normal : when you need hoisting, 'new', or your own 'this' (rare in test code)
-  }
-
-  async runAll(): Promise<void> {
+  runAll(): void {
     this.normalVsArrow();
-    this.syntaxVariations();
+    this.numberOfInputs();
+    this.shortBodyVsLongBody();
     this.forgottenReturn();
-    this.returnsObjectLiteral();
-    this.callbacksInArrayMethods();
-    this.destructuredParameter();
-    await this.miniTestRunner();
-    await this.asyncArrow();
-    this.lexicalThis();
-    this.arrowAsClassProperty();
-    this.arrowLimits();
-    this.playwrightCheatSheet();
-    this.whenToUse();
+    this.defaultValue();
+    this.useManyTimes();
+    this.arrowInArrays();
+    this.arrowAsCallback();
+    this.swapTheBehaviour();
+    this.returnObject();
+    this.orderMatters();
+    this.inPlaywright();
   }
 }
 
 // ---------------------------------------------------------------
 // HOW TO RUN
 //   All scenarios      : new ArrowFunctions().runAll();
-//   One scenario only  : new ArrowFunctions().callbacksInArrayMethods();
-//   (miniTestRunner and asyncArrow are async - use:  new ArrowFunctions().miniTestRunner();)
+//   One scenario only  : new ArrowFunctions().arrowInArrays();
 // ---------------------------------------------------------------
 new ArrowFunctions().runAll();

@@ -1,0 +1,109 @@
+# GIT NOTES (SIMPLE VERSION)
+
+Rule for our project:
+master = production (always working, never edit directly)
+branch_xxx = your work branch (example: branch_Nov) -> merge into master with a Pull Request
+
+1. ONE-TIME SETUP (only once per computer)
+
+---
+
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+
+Log in to GitHub from the terminal (a code is shown IN THE TERMINAL, not in email):
+gh auth login
+
+2. START A NEW PROJECT (only once per project)
+
+---
+
+git init -b master
+git add .
+git commit -m "first commit"
+git remote add origin https://github.com/YOUR-NAME/YOUR-REPO.git
+git push -u origin master
+
+Create the empty repo on github.com FIRST, otherwise you get "Repository not found".
+
+3. EVERY DAY: WORK ON A BRANCH
+
+---
+
+git switch master # go to master
+git pull # get the latest
+git switch -c branch_Nov # create + move to your new branch
+
+... write your code ...
+
+git status # what changed?
+git add . # pick all changes
+git commit -m "add array examples" # save them with a message
+git push -u origin branch_Nov # first push of this branch
+git push # next pushes of the same branch
+
+4. MERGE INTO MASTER
+
+---
+
+On github.com: open the repo -> "Compare & pull request" -> "Create pull request" -> "Merge pull request".
+
+Then on your computer:
+git switch master
+git pull # master now has your work
+
+5. CLEAN UP AFTER MERGE
+
+---
+
+git branch -d branch_Nov # delete local branch
+git push origin --delete branch_Nov # delete branch on GitHub
+
+6. USEFUL EXTRAS
+
+---
+
+git branch # list local branches (\* = current)
+git branch -a # list local + GitHub branches
+git log --oneline # short history
+git switch branch_Nov # move to another branch
+
+Fix the LAST commit message (only if NOT pushed yet):
+git commit --amend -m "new message"
+
+Undo "git add" for one file (keeps your changes):
+git restore --staged file.ts
+
+7. .gitignore (files git should NOT save)
+
+---
+
+Create a file named .gitignore in the project root:
+
+node_modules/
+.DS_Store
+test-results/
+playwright-report/
+
+If a file was already committed, stop tracking it (file stays on disk):
+git rm --cached .DS_Store
+git commit -m "stop tracking .DS_Store"
+git push
+
+8. ERRORS WE HIT
+
+---
+
+"fatal: not a git repository" -> run git init first (or cd into the project folder)
+"Repository not found" -> create the repo on github.com first, check the URL
+"remote origin already exists" -> it is already set; check with git remote -v
+"command not found: now" -> you typed a normal sentence in the terminal; only type commands
+Cannot delete 'main' on GitHub -> GitHub Settings -> Branches -> change default branch to master first
+"master doesn't have my new file" -> the branch is not merged yet; do step 4 (Pull Request) then git pull on master
+
+## QUICK CHEAT SHEET
+
+git switch -c branch_x new branch git add . pick changes
+git switch master go to master git commit -m "" save
+git pull get latest git push upload
+git status what changed git log --oneline history
