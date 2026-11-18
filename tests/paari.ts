@@ -2,3 +2,4 @@ export {};//This is required to make this file a module and avoid the error "Can
 
 const name: string = 'Paari';
 console.log(`Hello ${name}`);
+console.log(`Hello ${name}`);
